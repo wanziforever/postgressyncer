@@ -1,0 +1,35 @@
+{
+  "source_pg_server": {
+    "host": "127.0.0.1",
+    "port": "5436",
+    "dbname": "postgres",
+    "username": "postgres",
+    "password": "pwd"
+  },
+  "warehouse_server": {
+    "host": "127.0.0.1",
+    "port": "5432",
+    "dbname": "postgres",
+    "username": "gpadmin",
+    "password": "pwd"
+  },
+  "tablemaps": [
+    {
+      "tablename": "dagl_person",
+      "fields": [
+        {"name": "personid", "type": "string"},
+        {"name": "personcode", "type": "string"},
+        {"name": "pname", "type": "string"}
+      ]
+    },
+    {
+      "tablename": "mxb_gxbsf",
+      "fields": [
+        {"name": "gxbid", "type": "number"},
+        {"name": "personid", "type": "number"},
+        {"name": "bloodpressure1", "type": "number"},
+        {"name": "bloodpressure2", "type": "number"}
+      ]
+    }
+  ]
+}
