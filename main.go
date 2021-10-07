@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
-	//"strings"
+	"strings"
 	"os"
 	"github.com/lib/pq"
 	"io/ioutil"
@@ -17,6 +17,11 @@ const (
 	TABLE_FIELD_TYPE_NUMBER = 1
 )
 
+const (
+	TABLE_MODE_FILTER = 0
+	TABLE_MODE_ALL = 1
+)
+
 type FieldDesc struct {
 	Typ int
 	IsPrimaryKey bool
@@ -25,6 +30,7 @@ type FieldDesc struct {
 var config Config
 
 var tableDesc = make(map[string]map[string]*FieldDesc)
+var tableMode = make(map[string]int)
 
 var warehouseConn *sql.DB
 var listener *pq.Listener
@@ -100,14 +106,14 @@ type UpdateStmt struct {
 	Tablename string
 	Fields []string
 	Values []string
-	keyFields []string // from old
-	keyValues []string // from old
+	KeyFields []string // from old
+	KeyValues []string // from old
 }
 
 
 func (s *UpdateStmt) AddKeyColumAndValue(col string, val string) {
-	s.keyFields = append(s.keyFields, col)
-	s.keyValues = append(s.keyValues, val)
+	s.KeyFields = append(s.KeyFields, col)
+	s.KeyValues = append(s.KeyValues, val)
 }
 
 func (s *UpdateStmt) AddColumnAndValue(col string, val string) {
@@ -124,7 +130,7 @@ func (s *UpdateStmt) ToSqlString() {
 	fmt.Println("going to generate update sql string: ",
 		len(s.Fields), len(s.Values))
 	columnDesc := tableDesc[s.Tablename]
-	fieldNum := len(s.Fields)
+	fieldNum := len(s.KeyFields)
 	
 	// begin to generate the delete statment
 	delstr := "delete from " + s.Tablename
@@ -134,14 +140,14 @@ func (s *UpdateStmt) ToSqlString() {
 	for i := 0; i < fieldNum; i++ {
 		qualstr := ""
 		valstr := ""
-		if fd, ok := columnDesc[s.Fields[i]]; ok {
+		if fd, ok := columnDesc[s.KeyFields[i]]; ok {
 			if fd.IsPrimaryKey {
 				if fd.Typ == TABLE_FIELD_TYPE_STRING {
-					valstr = "'" + s.Values[i] + "'"
+					valstr = "'" + s.KeyValues[i] + "'"
 				}	else {
-					valstr = s.Values[i]
+					valstr = s.KeyValues[i]
 				}
-				qualstr = fmt.Sprintf("%s = %s", s.Fields[i], valstr)
+				qualstr = fmt.Sprintf("%s = %s", s.KeyFields[i], valstr)
 				count += 1
 			}
 		}
@@ -162,6 +168,8 @@ func (s *UpdateStmt) ToSqlString() {
 	instr := "insert into " + s.Tablename + " "
 	fieldstr := " ("
 	valstr := " values ("
+
+	fieldNum =  len(s.Fields)
 
 	for i := 0; i < fieldNum; i++ {
 		if i != 0 {
@@ -207,20 +215,19 @@ type DeleteStmt struct {
 	Tablename string
 	Fields []string
 	Values []string
-	keyFields []string // from old
-	keyValues []string // from old
+	KeyFields []string // from old
+	KeyValues []string // from old
 }
 
 
 func (s *DeleteStmt) AddKeyColumAndValue(col string, val string) {
-	s.keyFields = append(s.keyFields, col)
-	s.keyValues = append(s.keyValues, val)
+	s.KeyFields = append(s.KeyFields, col)
+	s.KeyValues = append(s.KeyValues, val)
 }
 
 func (s *DeleteStmt) AddColumnAndValue(col string, val string) {
 	s.Fields = append(s.Fields, col)
 	s.Values = append(s.Values, val)
-	fmt.Println("delete statment find old tuple", col, val)
 }
 
 
@@ -231,24 +238,24 @@ func (s *DeleteStmt) ToSqlString() {
 	fmt.Println("going to generate delete sql string: ",
 		len(s.Fields), len(s.Values))
 	columnDesc := tableDesc[s.Tablename]
-	fieldNum := len(s.Fields)
+	fieldNum := len(s.KeyFields)
 	
 	// begin to generate the delete statment
 	delstr := "delete from " + s.Tablename
 	wherestr := "where "
-	
+
 	var count int = 0
 	for i := 0; i < fieldNum; i++ {
 		qualstr := ""
 		valstr := ""
-		if fd, ok := columnDesc[s.Fields[i]]; ok {
+		if fd, ok := columnDesc[s.KeyFields[i]]; ok {
 			if fd.IsPrimaryKey {
 				if fd.Typ == TABLE_FIELD_TYPE_STRING {
-					valstr = "'" + s.Values[i] + "'"
+					valstr = "'" + s.KeyValues[i] + "'"
 				}	else {
-					valstr = s.Values[i]
+					valstr = s.KeyValues[i]
 				}
-				qualstr = fmt.Sprintf("%s = %s", s.Fields[i], valstr)
+				qualstr = fmt.Sprintf("%s = %s", s.KeyFields[i], valstr)
 				count += 1
 			}
 		}
@@ -289,7 +296,7 @@ func transformInsert(table string, new map[string]interface{},
 
 	var stmt = &InsertStmt{Tablename: table}
 	for key, value := range new {
-		if _, ok := fieldsDesc[key]; !ok {
+		if _, ok := fieldsDesc[key]; !ok && tableMode[table] == TABLE_MODE_FILTER {
 			continue
 		}
 		
@@ -312,7 +319,7 @@ func transformUpdate(table string,  new map[string]interface{},
 	var stmt = &UpdateStmt{Tablename: table}
 
 	for key, value := range new {
-		if _, ok := fieldsDesc[key]; !ok {
+		if _, ok := fieldsDesc[key]; !ok && tableMode[table] == TABLE_MODE_FILTER {
 			continue
 		}
 
@@ -321,8 +328,30 @@ func transformUpdate(table string,  new map[string]interface{},
 		}
 	}
 
+	for key, value := range new {
+		if _, ok := fieldsDesc[key]; !ok {
+			continue
+		}
+
+		if value != nil && fieldsDesc[key].IsPrimaryKey {
+			stmt.AddKeyColumAndValue(key, value.(string))
+		}
+	}
+
 	stmt.ToSqlString()
-	return stmt.getSQL()
+
+	updstr := stmt.getSQL()
+	// double check for update statemnet should have a where clause
+	// in the first delete statement
+
+	i := strings.Index(updstr, "where")
+	if i <= -1 {
+		fmt.Println("fail to find where clause in the update, a fatal error:")
+		fmt.Println(updstr)
+		fmt.Println("return empty statement")
+		return ""
+	}
+	return updstr
 }
 
 func transformDelete(table string, new map[string]interface{},
@@ -332,7 +361,7 @@ func transformDelete(table string, new map[string]interface{},
 	var stmt = &DeleteStmt{Tablename: table}
 
 	for key, value := range old {
-		if _, ok := fieldsDesc[key]; !ok {
+		if _, ok := fieldsDesc[key]; !ok && tableMode[table] == TABLE_MODE_FILTER {
 			continue
 		}
 
@@ -341,8 +370,29 @@ func transformDelete(table string, new map[string]interface{},
 		}
 	}
 
+	for key, value := range old {
+		if _, ok := fieldsDesc[key]; !ok {
+			continue
+		}
+
+		if value != nil && fieldsDesc[key].IsPrimaryKey {
+			stmt.AddKeyColumAndValue(key, value.(string))
+		}
+	}
+
 	stmt.ToSqlString()
-	return stmt.getSQL()
+
+	// need to double check the delete messsage should have a where
+	delstr := stmt.getSQL()
+
+	i := strings.Index(delstr, "where")
+	if i <= -1 {
+		fmt.Println("fail to find where clause in the delete, a fatal error:")
+		fmt.Println(delstr)
+		fmt.Println("return empty statement")
+		return ""
+	}
+	return delstr
 }
 
 func transformToSQL(triggerstr string) string {
@@ -363,8 +413,8 @@ func transformToSQL(triggerstr string) string {
 		}
 	}
 
-	fmt.Println("table: ", table)
-	fmt.Println("action: ", action)
+	//fmt.Println("table: ", table)
+	//fmt.Println("action: ", action)
 
 	if action == "INSERT" {
 		return transformInsert(table.(string), newdata, olddata)
@@ -430,6 +480,12 @@ func setupTableMap(config Config) {
 			}
 			targetFields[field.Name] = fd
 		}
+
+		if table.Mode == "filter" {
+			tableMode[table.Tablename] = TABLE_MODE_FILTER
+		} else {
+			tableMode[table.Tablename] = TABLE_MODE_ALL
+		}
 	}
 }
 
@@ -452,7 +508,7 @@ func notifyDMLToWarehouse(sql string) {
 
 	_, err := warehouseConn.Exec(sql)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
 }
 
@@ -498,7 +554,7 @@ func main() {
 	loadConfig()
 	fmt.Println("%+v\n", config)
 	setupTableMap(config)
-	examineTableMaps()
+	//examineTableMaps()
 
 	warehouseConn = launchWarehouseConnection()
 

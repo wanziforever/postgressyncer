@@ -24,6 +24,7 @@ type NameType struct {
 
 type TableMap struct {
 	Tablename string `json:"tablename"`
+	Mode string `json:"mode"`
 	Fields []NameType `json:"fields"`
 }
 

@@ -43,3 +43,58 @@ CREATE OR REPLACE FUNCTION notify_event() RETURNS TRIGGER AS $$
     END;
     
 $$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER products_notify_event
+AFTER INSERT OR UPDATE OR DELETE ON dagl_person
+FOR EACH ROW EXECUTE PROCEDURE notify_event();
+
+CREATE TRIGGER products_notify_event
+AFTER INSERT OR UPDATE OR DELETE ON dagl_bodycheck
+FOR EACH ROW EXECUTE PROCEDURE notify_event();
+
+CREATE TRIGGER products_notify_event
+AFTER INSERT OR UPDATE OR DELETE ON dagl_bodycheck_second
+FOR EACH ROW EXECUTE PROCEDURE notify_event();
+
+CREATE TRIGGER products_notify_event
+AFTER INSERT OR UPDATE OR DELETE ON dagl_bodycheck_third
+FOR EACH ROW EXECUTE PROCEDURE notify_event();
+
+CREATE TRIGGER products_notify_event
+AFTER INSERT OR UPDATE OR DELETE ON dagl_record_gxy
+FOR EACH ROW EXECUTE PROCEDURE notify_event();
+
+CREATE TRIGGER products_notify_event
+AFTER INSERT OR UPDATE OR DELETE ON fd_contacts
+FOR EACH ROW EXECUTE PROCEDURE notify_event();
+
+CREATE TRIGGER products_notify_event
+AFTER INSERT OR UPDATE OR DELETE ON fd_contract_packs
+FOR EACH ROW EXECUTE PROCEDURE notify_event();
+
+CREATE TRIGGER products_notify_event
+AFTER INSERT OR UPDATE OR DELETE ON fd_packages
+FOR EACH ROW EXECUTE PROCEDURE notify_event();
+
+CREATE TRIGGER products_notify_event
+AFTER INSERT OR UPDATE OR DELETE ON mxb_gxysf
+FOR EACH ROW EXECUTE PROCEDURE notify_event();
+
+CREATE TRIGGER products_notify_event
+AFTER INSERT OR UPDATE OR DELETE ON mxb_personnr
+FOR EACH ROW EXECUTE PROCEDURE notify_event();
+
+CREATE TRIGGER products_notify_event
+AFTER INSERT OR UPDATE OR DELETE ON old_healthmanagement
+FOR EACH ROW EXECUTE PROCEDURE notify_event();
+
+CREATE TRIGGER products_notify_event
+AFTER INSERT OR UPDATE OR DELETE ON sys_department
+FOR EACH ROW EXECUTE PROCEDURE notify_event();
+
+CREATE TRIGGER products_notify_event
+AFTER INSERT OR UPDATE OR DELETE ON sys_townvillage
+FOR EACH ROW EXECUTE PROCEDURE notify_event();
+
+

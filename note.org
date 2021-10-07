@@ -17,3 +17,5 @@ Asynchronous notification "events" with payload "{"table" : "dagl_person", "acti
 insert into dagl_person (personid, personcode, pname) values (11111111111131, 44444444444, 'dennytest');
 update dagl_person set pname='fff' where personid='11111111111133';
 delete from dagl_person where personid='11111111111130';
+
+insert into dagl_bodycheck (checkid, personid, doctor) values('111111111', '234234324', '11134234');
