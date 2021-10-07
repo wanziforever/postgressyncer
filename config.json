@@ -17,18 +17,18 @@
     {
       "tablename": "dagl_person",
       "fields": [
-        {"name": "personid", "type": "string"},
-        {"name": "personcode", "type": "string"},
-        {"name": "pname", "type": "string"}
+        {"name": "personid", "type": "string", "isPrimaryKey": true},
+        {"name": "personcode", "type": "string", "isPrimaryKey": false},
+        {"name": "pname", "type": "string", "isPrimaryKey": false}
       ]
     },
     {
       "tablename": "mxb_gxbsf",
       "fields": [
-        {"name": "gxbid", "type": "number"},
-        {"name": "personid", "type": "number"},
-        {"name": "bloodpressure1", "type": "number"},
-        {"name": "bloodpressure2", "type": "number"}
+        {"name": "gxbid", "type": "number", "isPrimaryKey": true},
+        {"name": "personid", "type": "number", "isPrimaryKey": false},
+        {"name": "bloodpressure1", "type": "number", "isPrimaryKey": false},
+        {"name": "bloodpressure2", "type": "number", "isPrimaryKey": false}
       ]
     }
   ]

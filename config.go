@@ -19,6 +19,7 @@ type WarehouseHost struct {
 type NameType struct {
 	Name string `json:"name"`
 	Type string `json:"type"`
+	IsPrimaryKey bool `json:"isPrimarykey"`
 }
 
 type TableMap struct {

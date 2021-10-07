@@ -2,6 +2,8 @@ CREATE OR REPLACE FUNCTION notify_event() RETURNS TRIGGER AS $$
 
     DECLARE 
         data json;
+        newdata json;
+        olddata json;
         notification json;
     
     BEGIN
@@ -11,17 +13,28 @@ CREATE OR REPLACE FUNCTION notify_event() RETURNS TRIGGER AS $$
         -- Action = INSERT or UPDATE?   -> NEW row
         IF (TG_OP = 'DELETE') THEN
             data = row_to_json(OLD);
-        ELSE
-            data = row_to_json(NEW);
-        END IF;
-        
-        -- Contruct the notification as a JSON string.
-        notification = json_build_object(
+            notification = json_build_object(
                           'table',TG_TABLE_NAME,
                           'action', TG_OP,
-                          'data', data);
+                          'new', null,
+                          'old', data);
+        ELSIF (TG_OP = 'INSERt') THEN
+            data = row_to_json(NEW);
+            notification = json_build_object(
+                          'table',TG_TABLE_NAME,
+                          'action', TG_OP,
+                          'new', data,
+                          'old', null);
+        ELSE
+            newdata = row_to_json(NEW);
+            olddata = row_to_json(OLD);
+            notification = json_build_object(
+                          'table',TG_TABLE_NAME,
+                          'action', TG_OP,
+                          'new', newdata,
+                          'old', olddata);
+        END IF;
         
-                        
         -- Execute pg_notify(channel, notification)
         PERFORM pg_notify('events',notification::text);
         
